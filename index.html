@@ -11,31 +11,65 @@
 </head>
 <body>
     <script src="js/three.js"></script>
+    <script src="js/GLTFLoader.js"></script>
+    <script src="js/OrbitControls.js"></script>
     <script>
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-        const renderer = new THREE.WebGLRenderer();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
-
-        camera.position.z = 5;
-
-        const animate = function () {
+        // CAMERA
+        /*/ type of camera with field of view, aspect ratio, nearand far view*/
+        const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
+        camera.rotation.y = 45 / 180 * Math.PI;
+        camera.position.set(0, 0, 10); // camera placement (x,y,z)
+        camera.lookAt(0, 0, 0); // camera is looking at (0,0,0)
+        // RENDERER
+        const renderer = new THREE.WebGLRenderer({ antialias: true }); /*/ antialias->true smooths the jagged edges*/
+        renderer.setPixelRatio(window.devicePixelRatio)
+        renderer.setSize(window.innerWidth / 2, window.innerHeight / 2)
+        //Scene
+        const scene = new Scene();
+        // add grid helper if you want to show grid in the scene
+        /*/scene.add(new THREE.GridHelper(8,12,0x888888, 0x444444));*/
+        scene.background = new THREE.Color(0xffffff);// set background color
+        //light - makes the model look real
+        const light = new THREE.AmbientLight(0x404040, 100);
+        scene.add(light);
+        const dirLight = new THREE.PointLight(0xffffff, 100);
+        dirLight.position.set(0, 1, 0);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+        /*/ orbital controls -optional this lets you play with model (rotate, flip, zoom) on webpage*/
+        const control = new OrbitControls(camera, renderer.domElement)
+        // ANIMATION LOOP
+        function animate() {
             requestAnimationFrame(animate);
-
-            cube.rotation.x += 0.01;
-            cube.rotation.y += 0.01;
-
             renderer.render(scene, camera);
-        };
+        }
+        /* Change aspect ratio of renderer and camera on window resize*/
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth / 2, window.innerHeight / 2);
+        }
 
-        animate();
+        const loader = new GLTFLoader().setPath('assets/');
+        loader.load('scene.gltf', function (gltf) {
+
+            gltf.scene.traverse(function (child) {
+
+                if (child.isMesh) {
+
+                    roughnessMipmapper.generateMipmaps(child.material);
+
+                }
+
+            });
+
+            scene.add(gltf.scene);
+
+            roughnessMipmapper.dispose();
+
+            animate();
+        }
+
     </script>
 </body>
 </html>
