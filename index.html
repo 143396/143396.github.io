@@ -1,75 +1,114 @@
-﻿<!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>My first three.js app</title>
-    <style>
-        body {
-            margin: 0;
-        }
-    </style>
+	<title>three.js webgl - glTF loader</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link type="text/css" rel="stylesheet" href="main.css">
 </head>
+
 <body>
-    <script src="js/three.js"></script>
-    <script src="js/GLTFLoader.js"></script>
-    <script src="js/OrbitControls.js"></script>
-    <script>
-        // CAMERA
-        /*/ type of camera with field of view, aspect ratio, nearand far view*/
-        const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 5000);
-        camera.rotation.y = 45 / 180 * Math.PI;
-        camera.position.set(0, 0, 10); // camera placement (x,y,z)
-        camera.lookAt(0, 0, 0); // camera is looking at (0,0,0)
-        // RENDERER
-        const renderer = new THREE.WebGLRenderer({ antialias: true }); /*/ antialias->true smooths the jagged edges*/
-        renderer.setPixelRatio(window.devicePixelRatio)
-        renderer.setSize(window.innerWidth / 2, window.innerHeight / 2)
-        //Scene
-        const scene = new Scene();
-        // add grid helper if you want to show grid in the scene
-        /*/scene.add(new THREE.GridHelper(8,12,0x888888, 0x444444));*/
-        scene.background = new THREE.Color(0xffffff);// set background color
-        //light - makes the model look real
-        const light = new THREE.AmbientLight(0x404040, 100);
-        scene.add(light);
-        const dirLight = new THREE.PointLight(0xffffff, 100);
-        dirLight.position.set(0, 1, 0);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
-        /*/ orbital controls -optional this lets you play with model (rotate, flip, zoom) on webpage*/
-        const control = new OrbitControls(camera, renderer.domElement)
-        // ANIMATION LOOP
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        /* Change aspect ratio of renderer and camera on window resize*/
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth / 2, window.innerHeight / 2);
-        }
+	<script type="module">
 
-        const loader = new GLTFLoader().setPath('assets/');
-        loader.load('scene.gltf', function (gltf) {
+        import * as THREE from './js/three.module.js';
 
-            gltf.scene.traverse(function (child) {
+		import { OrbitControls } from './js/OrbitControls.js';
+		import { GLTFLoader } from './js/GLTFLoader.js';
+		import { RGBELoader } from './js/RGBELoader.js';
+		import { RoughnessMipmapper } from './js/RoughnessMipmapper.js';
 
-                if (child.isMesh) {
+		let camera, scene, renderer;
 
-                    roughnessMipmapper.generateMipmaps(child.material);
+		init();
+		render();
 
-                }
+		function init() {
 
-            });
+			const container = document.createElement('div');
+			document.body.appendChild(container);
 
-            scene.add(gltf.scene);
+			camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.25, 20);
+			camera.position.set(- 1.8, 0.6, 2.7);
 
-            roughnessMipmapper.dispose();
+			scene = new THREE.Scene();
 
-            animate();
-        }
+			new RGBELoader()
+				.load('./assets/royal_esplanade_1k.hdr', function (texture) {
 
-    </script>
+					texture.mapping = THREE.EquirectangularReflectionMapping;
+
+					// scene.background = texture;
+					scene.environment = texture;
+
+					render();
+
+					// model
+
+					// use of RoughnessMipmapper is optional
+					const roughnessMipmapper = new RoughnessMipmapper(renderer);
+
+					const loader = new GLTFLoader();
+					loader.load('./assets/gltf/DamagedHelmet.gltf', function (gltf) {
+
+						gltf.scene.traverse(function (child) {
+
+							if (child.isMesh) {
+
+								roughnessMipmapper.generateMipmaps(child.material);
+
+							}
+
+						});
+
+						scene.add(gltf.scene);
+
+						roughnessMipmapper.dispose();
+
+						render();
+
+					});
+
+				});
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			renderer.toneMapping = THREE.ACESFilmicToneMapping;
+			renderer.toneMappingExposure = 1;
+			renderer.outputEncoding = THREE.sRGBEncoding;
+			container.appendChild(renderer.domElement);
+
+			const controls = new OrbitControls(camera, renderer.domElement);
+			controls.addEventListener('change', render); // use if there is no animation loop
+			controls.minDistance = 2;
+			controls.maxDistance = 10;
+			controls.target.set(0, 0, - 0.2);
+			controls.update();
+
+			window.addEventListener('resize', onWindowResize);
+
+		}
+
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize(window.innerWidth, window.innerHeight);
+
+			render();
+
+		}
+
+		//
+
+		function render() {
+
+			renderer.render(scene, camera);
+
+		}
+
+	</script>
+
 </body>
 </html>
